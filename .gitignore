@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Build / packaging outputs
+build/
+dist/
+发布包/
+*.spec
+
+# Runtime data (source mode stores these beside the scripts)
+vr_dlna_access.log
+vr_dlna_access.log.old
+vr_dlna_broken_dirs.json
+vr_dlna_config.json
+vr_dlna_funscript_config.json
+vr_dlna_settings.json
+vr_dlna_video_config.json
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
