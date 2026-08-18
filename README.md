@@ -26,25 +26,17 @@
 
 ## 运行
 
+直接运行最新打包 EXE：
+
+```powershell
+VR-DLNA-v0.1.0.exe
+```
+
 源码模式：
 
 ```powershell
 python vr_dlna.py
 ```
-
-或使用：
-
-```powershell
-启动VR-DLNA.bat
-```
-
-打包单文件 EXE：
-
-```powershell
-打包含exe.bat
-```
-
-打包产物输出到 `dist\抚物器.exe`。
 
 ## 配置说明
 
@@ -60,14 +52,13 @@ python vr_dlna.py
 ## 项目结构
 
 ```
+VR-DLNA-v0.1.0.exe      最新打包 EXE（无需 Python，双击运行）
 vr_dlna.py              DLNA 服务器主程序（含 GUI）
 funscript_sync.py       funscript 同步核心
 funscript_sync_ui.py    funscript 同步 GUI
 video_sync.py           视频同步核心
 video_sync_ui.py        视频同步 GUI
 tray_icon.py            系统托盘
-app_icon.ico            应用图标
-审查报告-DLNA-20260816.md
 ```
 
 ## 安全说明
