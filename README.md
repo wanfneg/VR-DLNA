@@ -26,11 +26,9 @@
 
 ## 运行
 
-直接运行最新打包 EXE：
+最新打包 EXE 请从 GitHub Releases 下载：
 
-```powershell
-VR-DLNA-v0.1.0.exe
-```
+https://github.com/wanfneg/VR-DLNA/releases/latest
 
 源码模式：
 
@@ -52,7 +50,6 @@ python vr_dlna.py
 ## 项目结构
 
 ```
-VR-DLNA-v0.1.0.exe      最新打包 EXE（无需 Python，双击运行）
 vr_dlna.py              DLNA 服务器主程序（含 GUI）
 funscript_sync.py       funscript 同步核心
 funscript_sync_ui.py    funscript 同步 GUI

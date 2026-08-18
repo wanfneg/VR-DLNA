@@ -10,6 +10,7 @@ build/
 dist/
 发布包/
 *.spec
+*.exe
 
 # Runtime data (source mode stores these beside the scripts)
 vr_dlna_access.log
