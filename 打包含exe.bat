@@ -22,7 +22,7 @@ if errorlevel 1 (
 )
 
 echo 正在打包单文件 EXE ...
-python -m PyInstaller --noconsole --onefile --name 抚物器 --clean vr_dlna.py
+python -m PyInstaller --noconsole --onefile --name 抚物器 --icon app_icon.ico --clean vr_dlna.py
 if errorlevel 1 (
     echo [错误] 打包失败，请查看上方错误信息。
     pause
