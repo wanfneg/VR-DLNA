@@ -45,6 +45,7 @@ from pathlib import Path
 # 常量
 # ---------------------------------------------------------------------------
 VIDEO_EXTS = {".mp4", ".mkv", ".mov", ".avi", ".webm", ".ts", ".m2ts", ".mts", ".wmv", ".flv", ".mpg", ".mpeg", ".3gp", ".ogv", ".vob"}
+AUDIO_EXTS = {".mp3", ".m4a", ".aac", ".wav", ".flac", ".ogg", ".opus", ".wma", ".amr", ".m4b", ".aiff", ".ape"}
 SUBTITLE_EXTS = {".srt", ".ass", ".vtt"}
 SUBTITLE_MIME = {".srt": "application/x-subrip", ".ass": "application/x-ass", ".vtt": "text/vtt"}
 HIDDEN_PREFIXES = (".", "$")
@@ -264,6 +265,10 @@ def is_video(name: str) -> bool:
     return Path(name).suffix.lower() in VIDEO_EXTS
 
 
+def is_audio(name: str) -> bool:
+    return Path(name).suffix.lower() in AUDIO_EXTS
+
+
 def is_subtitle(name: str) -> bool:
     return Path(name).suffix.lower() in SUBTITLE_EXTS
 
@@ -326,10 +331,22 @@ def mime_for(path: Path) -> str:
         ".wmv": "video/x-ms-wmv",
         ".webm": "video/webm",
         ".flv": "video/x-flv",
+        ".mp3": "audio/mpeg",
+        ".m4a": "audio/mp4",
+        ".m4b": "audio/mp4",
+        ".aac": "audio/aac",
+        ".wav": "audio/wav",
+        ".flac": "audio/flac",
+        ".ogg": "audio/ogg",
+        ".opus": "audio/opus",
+        ".wma": "audio/x-ms-wma",
+        ".amr": "audio/amr",
+        ".aiff": "audio/aiff",
+        ".ape": "audio/x-ape",
     }
     if ext in table:
         return table[ext]
-    return mimetypes.guess_type(str(path))[0] or "video/mp4"
+    return mimetypes.guess_type(str(path))[0] or "application/octet-stream"
 
 
 def dlna_proto(path: Path) -> str:
@@ -536,6 +553,8 @@ class MediaLibrary:
                 )
             elif is_video(name) or is_strm(name):
                 items.append(self._video_item(entry_path, key, parent_id, sibling_names))
+            elif is_audio(name):
+                items.append(self._audio_item(entry_path, key, parent_id))
         return "".join(items)
 
     def _video_item(self, path: Path, key: str, parent_id: str, sibling_names: set[str] | None = None) -> str:
@@ -575,6 +594,23 @@ class MediaLibrary:
             out += f'<sec:CaptionInfo sec:type="{sub["kind"]}">{sub_url}</sec:CaptionInfo>'
         out += "</item>"
         return out
+
+    def _audio_item(self, path: Path, key: str, parent_id: str) -> str:
+        title = html.escape(display_title(path))
+        url = f"{self.base_url}/media/{html.escape(urllib.parse.quote(key, safe='/'))}"
+        try:
+            size = _os_retry(path.stat, what=f"stat {path}").st_size
+        except OSError:
+            size = 0
+        proto = dlna_proto(path)
+        size_attr = f' size="{size}"' if size > 0 else ""
+        return (
+            f'<item id="{html.escape("V:" + key)}" parentID="{html.escape(parent_id)}" restricted="1">'
+            f"<dc:title>{title}</dc:title>"
+            f"<upnp:class>object.item.audioItem</upnp:class>"
+            f'<res protocolInfo="{html.escape(proto)}"{size_attr}>{url}</res>'
+            f"</item>"
+        )
 
     def _find_subtitles(self, video: Path, sibling_names: set[str] | None = None) -> list[dict]:
         """找视频同目录的外挂字幕：同名、或 同名.语言（zh/en…），中文优先。
@@ -1271,6 +1307,9 @@ class DlnaHandler(BaseHTTPRequestHandler):
                 "http-get:*:video/x-msvideo:DLNA.ORG_OP=01;DLNA.ORG_CI=0;DLNA.ORG_FLAGS=01700000000000000000000000000000,"
                 "http-get:*:video/x-ms-wmv:DLNA.ORG_OP=01;DLNA.ORG_CI=0;DLNA.ORG_FLAGS=01700000000000000000000000000000,"
                 "http-get:*:video/x-flv:DLNA.ORG_OP=01;DLNA.ORG_CI=0;DLNA.ORG_FLAGS=01700000000000000000000000000000,"
+                "http-get:*:audio/mpeg:*,http-get:*:audio/mp4:*,http-get:*:audio/aac:*,http-get:*:audio/wav:*,"
+                "http-get:*:audio/flac:*,http-get:*:audio/ogg:*,http-get:*:audio/opus:*,http-get:*:audio/x-ms-wma:*,"
+                "http-get:*:audio/amr:*,http-get:*:audio/aiff:*,http-get:*:audio/x-ape:*,"
                 "http-get:*:application/x-subrip:*,http-get:*:application/x-ass:*,http-get:*:text/vtt:*</Source>"
                 "<Sink></Sink>"
             )
@@ -1427,7 +1466,7 @@ class DlnaApp:
             except OSError:
                 is_file = False
             if is_file and flag == "BrowseMetadata":
-                item = self.library._video_item(p, key, obj_id)
+                item = self.library._audio_item(p, key, obj_id) if is_audio(p.name) else self.library._video_item(p, key, obj_id)
                 parts = [item] if item else []
         else:
             # 多根模式下，根容器的 ObjectID 就是 root.label（DeoVR 会 Browse 根容器）
@@ -1482,6 +1521,8 @@ class DlnaApp:
                 )
             elif is_video(name) or is_strm(name):
                 parts.append(self.library._video_item(entry_path, key, parent_id, sibling_names))
+            elif is_audio(name):
+                parts.append(self.library._audio_item(entry_path, key, parent_id))
         return parts
 
     def child_count(self, obj_id: str) -> int:
@@ -1512,7 +1553,7 @@ class DlnaApp:
             if entry.name.startswith(HIDDEN_PREFIXES):
                 continue
             try:
-                if entry.is_dir() or is_video(entry.name) or is_strm(entry.name):
+                if entry.is_dir() or is_video(entry.name) or is_audio(entry.name) or is_strm(entry.name):
                     n += 1
             except OSError:
                 pass
@@ -1593,7 +1634,7 @@ def run_gui() -> None:
     nb.add(tab_settings, text="设置")
 
     # ---- DLNA 页：顶部根目录 ----
-    frame_roots = ttk.LabelFrame(tab_dlna, text=" 视频根目录（支持多个，浏览零探测·秒开） ", padding=6)
+    frame_roots = ttk.LabelFrame(tab_dlna, text=" 媒体根目录（视频/音频，支持多个，浏览零探测·秒开） ", padding=6)
     frame_roots.pack(fill="x", padx=8, pady=(8, 4))
 
     list_roots = tk.Listbox(frame_roots, height=5)
